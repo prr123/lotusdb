@@ -323,23 +323,24 @@ func (dbpt *DBObj) ValidateOpts() error {
 	return nil
 }
 
-/*
-func (dbpt *DBObj) FillRan (level int) (err error){
 
-	db := *dbpt
-	h := hash {}
+func (dbpt *DBObj) FillRan (level int) (keyList, valList []string, err error){
+
+	db := (*dbpt).Db
+
+	keyList = make([]string, level)
+	valList = make([]string, level)
 	for i:=0; i<level; i++ {
-		bdat := GenRanData(5, 25)
-		hashval := GetHash(bdat)
+		keydat := GenRanData(5, 25)
 		valdat := GenRanData(5, 40)
-		valstr := fmt.Sprintf("val-%d_%s",i,string(valdat))
-lose	}
-//	(*db.Entries) = level
-	dbpt = &db
-//fmt.Printf("fil db: %v\n", dbpt)
-	return nil
+		keyList[i] = string(keydat)
+		valList[i] = string(valdat)
+		err = db.Put(keydat, valdat, nil)
+		if err != nil {return keyList, valList, fmt.Errorf("Put[%d] %v", level, err)}
+	}
+	return keyList, valList, nil
 }
-*/
+
 
 func (dbp *DBObj) AddEntry (key, val string) (err error){
 
@@ -351,20 +352,20 @@ func (dbp *DBObj) AddEntry (key, val string) (err error){
 	return nil
 }
 
-/*
-func (dbp *DBObj) UpdEntry (key, val string) (idx int){
-	db := *dbp
-	for i:=0; i< (*db.Entries); i++ {
-		if (*db.Keys)[i] == key {
-			idx = i
-			(*db.Vals)[i] = val
-			dbp = &db
-			return idx
-		}
-	}
-	return -1
+
+func (dbp *DBObj) UpdEntry (key, val string) (err error){
+
+    db := (*dbp).Db
+	res, err := db.Exist([]byte(key))
+	if err != nil {return fmt.Errorf("Exist: %v", err)}
+	if !res {return fmt.Errorf("key %s does not exist!", key)}
+
+    err = db.Put([]byte(key), []byte(val), nil)
+    if err != nil {return fmt.Errorf("Put: %v", err)}
+
+    return nil
 }
-*/
+
 
 func (dbp *DBObj) DelEntry (key string) (err error){
 
@@ -380,73 +381,31 @@ func (dbp *DBObj) GetVal (key string) (valstr string, err error){
 
 	db := (*dbp).Db
 	val, err := db.Get([]byte(key))
-	if err != nil {return "", fmt.Errorf("Put: %v", err)}
+	if err != nil {
+//key not found in database
+//		errStr := err.Error()
+//		fmt.Printf("errStr: %s\n", errStr)
+		return "", fmt.Errorf("Get: %v", err)}
 
 	return string(val), nil
 }
 
-/*
-func (dbp *DBObj) GetValByIdx (idx int)(valstr string, err error){
+func (dbp *DBObj) FindKey (key string) (res bool, err error){
 
-	db := *dbp
-	if idx < 0 || idx > (*db.Entries) {return "", fmt.Errorf("not a valid index!")}
-	valstr = (*db.Vals)[idx]
-	return valstr, nil
+	db := (*dbp).Db
+	res, err = db.Exist([]byte(key))
+	if err != nil {return false, fmt.Errorf("Exist: %v", err)}
+
+	return res, nil
 }
 
-func (dbp *DBObj) GetValByHash (hash uint64) (idx int, valstr string){
 
-	db := *dbp
-//	hashval := GetHash([]byte(key))
+func (dbp *DBObj) Backup() (err error){
 
-	for i:=0; i< (*db.Entries); i++ {
-		if (*db.HashList)[i].Hash == hash {
-			idx = i
-			valstr = (*db.Vals)[i]
-			return idx, valstr
-		}
-	}
-	return idx, ""
-}
-
-func (dbp *DBObj) FindKeyByHash (key string) (idx int){
-	db := *dbp
-	hashval := GetHash([]byte(key))
-
-	for i:=0; i< (*db.Entries); i++ {
-		if (*db.HashList)[i].Hash == hashval {
-			idx = i
-			return idx
-		}
-	}
-	return -1
-}
-
-func (dbp *DBObj) FindKey (keyStr string) (idx int) {
-
-	db := *dbp
-	for i:=0; i< (*db.Entries); i++ {
-		if (*db.Keys)[i] == keyStr {
-			idx = i
-			return idx
-		}
-	}
-	return -1
-
-}
-
-func (dbp *DBObj) GetKeyByIdx (idx int) (key string) {
-
-	db := *dbp
-	if idx > (*db.Entries) {return ""}
-
-	key = (*db.Keys)[idx]
-	return key
-}
-
-func (dbP *DBObj) Clean () (err error){
-
-	return err
+	db := (*dbp).Db
+	err = db.Sync()
+	if err != nil {return fmt.Errorf("could not sync db: %v!", err)}
+	return nil
 }
 
 /*
