@@ -1,12 +1,12 @@
 package lotusLib
 
 import (
-//	"log"
+	"log"
 //	"fmt"
 	"testing"
 	"os"
-//    "math/rand"
-//    "time"
+    "math/rand"
+    "time"
 )
 
 func TestDb(t *testing.T) {
@@ -43,120 +43,125 @@ func TestSaveOpt (t *testing.T) {
 
 }
 
-/*
-//func TestAddEntry(t *testing.T) {
+
+func TestAddEntry(t *testing.T) {
 
 	_, err := os.Stat("testDb")
 	if err == nil {
 		err1 := os.RemoveAll("testDb")
 		if err1 != nil {t.Errorf("error -- could not remove files: %v", err1)}
 	}
-	kv, err := InitKV("testDb", false)
-	if err != nil {t.Errorf("error -- InitKV: %v", err)}
 
-	err = kv.AddEntry("key1", "val1")
+	db, err := InitDb("testLotusDb", "LotusDbDat", false)
+	if err != nil {t.Errorf("error -- could not initialise Db: %v", err)}
+
+	err = db.AddEntry("key1", "val1")
 	if err != nil {t.Errorf("error -- AddEntry: %v", err)}
 
-	if (*kv.Keys)[0] != "key1" {t.Errorf("keys do not agree: %s is not %s!", (*kv.Keys)[0], "key1")}
+	res, err := db.FindKey("key1")
+	if err != nil {t.Errorf("error -- FindKey: %v", err)}
+	if !res {t.Errorf("error -- key \"key1\" not found!")}
 
-}
+	res, err = db.FindKey("key2")
+	if err != nil {t.Errorf("error -- FindKey: %v", err)}
+	if res {t.Errorf("error -- non-existent key \"key2\" found!")}
 
-func TestGetEntry(t *testing.T) {
-	kv, err := InitKV("testDb", false)
-	if err != nil {t.Errorf("error -- InitKV: %v", err)}
+	valdat, err := db.GetVal("key1")
+	if err != nil {t.Errorf("error -- GetVal for \"key1\": %v", err)}
 
-	err = kv.AddEntry("key1", "val1")
-	if err != nil {t.Errorf("error -- AddEntry: %v", err)}
+	if string(valdat) != "val1" {t.Errorf("values for \"key1\" do not agree: %s is not %s!", string(valdat), "val1")}
 
-	if (*kv.Keys)[0] != "key1" {t.Errorf("keys do not agree: %s is not %s!", (*kv.Keys)[0], "key1")}
-	if (*kv.Entries) != 1 {t.Errorf("invalid Entries: %d!", (*kv.Entries))}
+	valdat, err = db.GetVal("key2")
+	if err == nil {t.Errorf("error -- GetVal for key \"key2\": %s", string(valdat))}
+	if len(valdat) > 0 {t.Errorf("error -- length of valdat[%d] >0",len(valdat))}
 
-	idx, valstr := kv.GetVal("key1")
-	if valstr != "val1" {t.Errorf("values do not agree: %s is not %s!", valstr, "val1")}
-	if idx<0 || idx>(*kv.Entries) {t.Errorf("invalid index: %d!",idx)}
-
-	valstr,err = kv.GetValByIdx(0)
-	if err != nil {t.Errorf("error -- GetValByIdx: %v", err)}
-	if valstr != "val1" {t.Errorf("values do not agree: %s is not %s!", valstr, "val1")}
-
-	hash := GetHash([]byte("key1"))
-	idx, valstr = kv.GetValByHash(hash)
-	if valstr != "val1" {t.Errorf("values do not agree: %s is not %s!", valstr, "val1")}
-	if idx<0 || idx>(*kv.Entries) {t.Errorf("invalid index: %d!",idx)}
-
+	err = db.Close()
+	if err != nil {t.Errorf("error -- could not close Db: %v", err)}
 
 }
 
 
 func TestUpdEntry(t *testing.T) {
-	kv, err := InitKV("testDb", false)
-	if err != nil {t.Errorf("error -- InitKV: %v", err)}
 
-	err = kv.AddEntry("key1", "val1")
-	if err != nil {t.Errorf("error -- AddEntry: %v", err)}
+	db, err := InitDb("testLotusDb", "LotusDbDat", false)
+	if err != nil {t.Errorf("error -- could not initialise Db: %v", err)}
 
-	if (*kv.Keys)[0] != "key1" {t.Errorf("keys do not agree: %s is not %s!", (*kv.Keys)[0], "key1")}
+	valstr, err := db.GetVal("key1")
+	if err != nil {t.Errorf("error -- GetVal for \"key1\": %v", err)}
 
-	idx := kv.FindKey("key1")
-	if idx == -1 {t.Errorf("error -- FindKey: %d key1 not found!", idx)}
+	if valstr != "val1" {t.Errorf("values for \"key1\" do not agree: %s is not %s!", valstr, "val1")}
 
-	err = kv.UpdEntryByIdx(idx, "val1New")
-	if err != nil {t.Errorf("error -- UpdEntry: %v", err)}
+	err = db.UpdEntry("key1", "nval1")
+	if err != nil {t.Errorf("error -- UpdEntry for \"key1\": %v", err)}
 
-	valstr,err := kv.GetValByIdx(idx)
-	if err != nil {t.Errorf("error -- GetValByIdx: %v", err)}
-	if valstr != "val1New" {t.Errorf("values do not agree: %s is not %s!", valstr, "val1New")}
-	
+	nvalstr, err := db.GetVal("key1")
+	if err != nil {t.Errorf("error -- GetVal for \"key1\": %v", err)}
+	if nvalstr != "nval1" {t.Errorf("error - values do not match: %s %s",nvalstr, "nval1")}
+
+
+	err = db.Close()
+	if err != nil {t.Errorf("error -- could not close Db: %v", err)}
+
 }
+
 
 func TestDelEntry(t *testing.T) {
 
-	kv, err := InitKV("testDb", false)
-	if err != nil {t.Errorf("error -- InitKV: %v", err)}
+	db, err := InitDb("testLotusDb", "LotusDbDat", false)
+	if err != nil {t.Errorf("error -- could not initialise Db: %v", err)}
 
-	err = kv.AddEntry("key1", "val1")
+	err = db.AddEntry("key1", "val1")
 	if err != nil {t.Errorf("error -- AddEntry: %v", err)}
 
-	if (*kv.Keys)[0] != "key1" {t.Errorf("keys do not agree: %s is not %s!", (*kv.Keys)[0], "key1")}
+	res, err := db.FindKey("key1")
+	if err!=nil {t.Errorf("error -- FindKey: %v", err)}
+	if !res {t.Errorf("error -- FindKey: \"key1\" not found!")}
 
-	idx := kv.FindKey("key1")
-	if idx == -1 {t.Errorf("error -- FindKey: %d key1 not found!", idx)}
-
-	err = kv.DelEntry(idx)
+	err = db.DelEntry("key1")
 	if err != nil {t.Errorf("error -- DelEntry: %v", err)}
 
-	idx = kv.FindKey("key1")
-	if idx != -1 {t.Errorf("error -- FindKey: %d key1 not deleted!", idx)}
+	res, err = db.FindKey("key1")
+	if err!=nil {t.Errorf("error -- FindKey: %v", err)}
+	if res {t.Errorf("error -- FindKey: \"key1\" found! Should not exist!")}
+
+	err = db.Close()
+	if err != nil {t.Errorf("error -- could not close Db: %v", err)}
 
 }
+
 
 func TestBckupAndLoad(t *testing.T) {
 
-	kv, err := InitKV("testDb", false)
-	if err != nil {t.Errorf("error -- InitKV: %v", err)}
+	_, err := os.Stat("testLotusDb")
+	if err == nil {
+		err1 := os.RemoveAll("testLotusDb")
+		if err1 != nil {t.Errorf("error -- could not remove files: %v", err1)}
+	}
 
-	err = kv.FillRan(5)
+	db, err := InitDb("testLotusDb", "LotusDbDat", false)
+	if err != nil {t.Errorf("error -- could not initialise Db: %v", err)}
+
+	keys, vals, err := db.FillRan(5)
 	if err != nil {t.Errorf("error -- FillRan: %v", err)}
 
-	err = kv.Backup("testBackup.dat")
+	err = db.Backup()
 	if err != nil {t.Errorf("error -- Backup: %v", err)}
 
-	kvnew, err := InitKV("testDb", false)
-	if err != nil {t.Errorf("error -- Load: %v", err)}
+	err = db.Close()
+	if err != nil {t.Errorf("error -- could not close Db: %v", err)}
 
-	err = kvnew.Load("azulkvBase.dat")
-	if err != nil {t.Errorf("error -- Load: %v", err)}
+	db, err = InitDb("testLotusDb", "LotusDbDat", false)
+	if err != nil {t.Errorf("error -- could not initialise Db: %v", err)}
 
-	if (*kv.Entries) != (*kvnew.Entries) {t.Errorf("error entries do not match kv: %d kvnew: %d", (*kv.Entries), (*kvnew.Entries))}
-	for i:=0; i< (*kv.Entries); i++ {
-		if (*kv.Keys)[i] != (*kvnew.Keys)[i] {
-			t.Errorf("error -- no key match at idx[%d] key: %s keynew: %s",i, (*kv.Keys)[i], (*kvnew.Keys)[i])
-		}
-	}
-//	err = os.Remove("testDb/testBackup.dat")
-//	if err != nil {t.Errorf("error -- Remove: %v", err)}
+	valstr, err := db.GetVal(keys[0])
+	if err != nil {t.Errorf("error -- GetVal for \"key1\": %v", err)}
+	if valstr != vals[0] {t.Errorf("error - values do not match: %s %s",vals[0], valstr)}
+
+	err = db.Close()
+	if err != nil {t.Errorf("error -- could not close Db: %v", err)}
 
 }
+
 
 func TestGet(t *testing.T) {
 
@@ -164,20 +169,24 @@ func TestGet(t *testing.T) {
 
 //	os.RemoveAll("testDb")
 	numEntries := 100
-	kv, err := InitKV("testDb", false)
-    if err != nil {t.Errorf("error -- InitKV: %v", err)}
+	_, err := os.Stat("testLotusDb")
+	if err == nil {
+		err1 := os.RemoveAll("testLotusDb")
+		if err1 != nil {t.Errorf("error -- could not remove files: %v", err1)}
+	}
 
-    err = kv.FillRan(numEntries)
+	db, err := InitDb("testLotusDb", "LotusDbDat", false)
+	if err != nil {t.Errorf("error -- could not initialise Db: %v", err)}
+
+    keyList, valList, err := db.FillRan(numEntries)
     if err != nil {t.Errorf("error -- FillRan: %v", err)}
 
-    err = kv.Backup("testBackup.dat")
-    if err != nil {t.Errorf("error -- Backup: %v", err)}
+	kidx := seededRand.Intn(numEntries)
+	keyStr := keyList[kidx]
+	valstr, err := db.GetVal(keyStr)
+	if err != nil {t.Errorf("invalid keyStr!")}
 
-		kidx := seededRand.Intn(numEntries)
-		keyStr := (*kv.Keys)[kidx]
-		idx, valstr := kv.GetVal(keyStr)
-		if idx != kidx  {t.Errorf("values do not agree: %d is not %d!", kidx, idx)}
-		if len(valstr) < 1 {t.Errorf("invalid valstr!")}
+	if valstr != valList[kidx]  {t.Errorf("values do not agree: %s is not %s!", valstr, valList[kidx])}
 
 }
 
@@ -186,13 +195,17 @@ func BenchmarkGet(b *testing.B) {
 
 	var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	os.RemoveAll("testDbNew")
-
 	numEntries := 100
-	kv, err := InitKV("testDbNew", false)
-    if err != nil {log.Fatalf("error -- InitKV: %v", err)}
+	_, err := os.Stat("testLotusDb")
+	if err == nil {
+		err1 := os.RemoveAll("testLotusDb")
+		if err1 != nil {log.Fatalf("error -- could not remove files: %v", err1)}
+	}
 
-    err = kv.FillRan(numEntries)
+	db, err := InitDb("testLotusDb", "LotusDbDat", false)
+	if err != nil {log.Fatalf("error -- could not initialise Db: %v", err)}
+
+    keyList, valList, err := db.FillRan(numEntries)
     if err != nil {log.Fatalf("error -- FillRan: %v", err)}
 
 //    err = kv.Backup("testDbNew_Backup.dat")
@@ -202,11 +215,12 @@ func BenchmarkGet(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		kidx := seededRand.Intn(numEntries)
-		keyStr := (*kv.Keys)[kidx]
-		idx, valstr := kv.GetVal(keyStr)
-		if idx != kidx  {log.Fatalf("values do not agree[%d]: %d is not %d!", n, kidx, idx)}
+		keyStr := keyList[kidx]
+		valstr, err := db.GetVal(keyStr)
+		if err != nil {log.Fatalf("GetVal err invalid keyStr!")}
 		if len(valstr) < 1 {log.Fatalf("invalid valstr!")}
+		if valstr != valList[kidx]  {log.Fatalf("values do not agree[%d]: %s is not %s!", n, valstr, valList[kidx])}
 	}
 }
 
-*/
+
